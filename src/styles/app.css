@@ -1,0 +1,308 @@
+@import "tailwindcss";
+
+/* Токены прототипа (:root в prototype_v10_6.html) с теми же смысловыми именами. */
+@theme {
+  --color-bg: #f7f8fb;
+  --color-surface: #ffffff;
+  --color-surface-2: #f9fafb;
+  --color-surface-3: #f3f5f9;
+  --color-fg: #182230;
+  --color-fg-2: #526074;
+  --color-muted: #697586;
+  --color-faint: #8b95a5;
+  --color-line: #e5e9f0;
+  --color-line-soft: #edf0f4;
+  --color-hover: #f4f6fa;
+  --color-accent: #315fce;
+  --color-accent-2: #244ba9;
+  --color-accent-soft: #edf3ff;
+  --color-accent-line: #b9ccf5;
+  --color-accent-fg: #2855b5;
+  --color-ok: #138a60;
+  --color-ok-soft: #e8f7f0;
+  --color-warn: #a86611;
+  --color-warn-soft: #fff4df;
+  --color-danger: #bf3b42;
+  --color-danger-soft: #fff0f0;
+  --color-red: #b42318;
+  --color-red-soft: #fdecec;
+  --color-ink: #172033;
+  --color-ink-2: #1f2a44;
+
+  --radius-card: 14px;
+  --radius-control: 9px;
+  --shadow-card: 0 8px 24px #1822300a;
+  --shadow-pop: 0 8px 24px #10182824;
+  --shadow-dialog: 0 24px 75px #10182830;
+
+  --font-sans: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+
+  --breakpoint-xs: 520px;
+  --breakpoint-sm: 720px;
+  --breakpoint-md: 1050px;
+  --breakpoint-lg: 1100px;
+  --breakpoint-xl: 1280px;
+
+  --animate-toast-in: toast-in 0.2s ease-out;
+  @keyframes toast-in {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
+@layer base {
+  html {
+    min-width: 320px;
+    color-scheme: light;
+  }
+  body {
+    margin: 0;
+    background: var(--color-bg);
+    color: var(--color-fg);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.45;
+  }
+  button {
+    cursor: pointer;
+  }
+  button:disabled {
+    cursor: default;
+  }
+  :where(button, input, select, textarea, a, [tabindex]):focus-visible {
+    outline: 3px solid #315fce35;
+    outline-offset: 1px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      transition: none !important;
+      animation: none !important;
+    }
+  }
+}
+
+/* Повторяющиеся примитивы прототипа. Компоненты shared/ui опираются на них. */
+@layer components {
+  .control {
+    width: 100%;
+    min-width: 0;
+    color: var(--color-fg);
+    background: var(--color-surface);
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-control);
+    padding: 10px 11px;
+    font: inherit;
+    font-weight: 400;
+    transition:
+      border-color 0.16s,
+      box-shadow 0.16s;
+  }
+  .control:focus {
+    border-color: #9bb6f2;
+    box-shadow: 0 0 0 3px #315fce12;
+    outline: 0;
+  }
+  .control:disabled,
+  .control[readonly] {
+    background: var(--color-surface-3);
+    color: var(--color-fg-2);
+  }
+  .control[aria-invalid="true"] {
+    border-color: var(--color-danger);
+    box-shadow: 0 0 0 3px #bf3b4212;
+  }
+  .control.is-auto {
+    border-style: dashed;
+    cursor: default;
+  }
+  select.control {
+    padding-right: 28px;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-control);
+    background: var(--color-surface);
+    color: var(--color-fg);
+    padding: 9px 12px;
+    font: inherit;
+    line-height: 1.2;
+    white-space: nowrap;
+    transition:
+      background 0.15s,
+      border-color 0.15s,
+      transform 0.15s;
+  }
+  .btn:hover:not(:disabled) {
+    background: var(--color-hover);
+    border-color: #cdd4df;
+  }
+  .btn:active:not(:disabled) {
+    transform: translateY(1px);
+  }
+  .btn:disabled {
+    opacity: 0.55;
+  }
+  .btn-primary {
+    background: var(--color-accent);
+    border-color: var(--color-accent);
+    color: #fff;
+    font-weight: 600;
+  }
+  .btn-primary:hover:not(:disabled) {
+    background: var(--color-accent-2);
+    border-color: var(--color-accent-2);
+  }
+  .btn-subtle {
+    background: transparent;
+    border-color: transparent;
+    color: var(--color-muted);
+  }
+  .btn-subtle:hover:not(:disabled) {
+    background: var(--color-surface-2);
+    border-color: var(--color-line);
+    color: var(--color-fg);
+  }
+  .btn-danger {
+    color: var(--color-danger);
+  }
+  .btn-sm {
+    font-size: 12px;
+    padding: 6px 9px;
+    border-radius: 8px;
+  }
+  .btn-icon {
+    width: 34px;
+    height: 34px;
+    padding: 0;
+  }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    font-size: 12px;
+    color: var(--color-fg-2);
+    font-weight: 600;
+    min-width: 0;
+  }
+
+  .card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-card);
+  }
+
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    border-radius: 99px;
+    padding: 4px 8px;
+    font-size: 10px;
+    line-height: 1.2;
+    font-weight: 700;
+    border: 1px solid transparent;
+    white-space: nowrap;
+  }
+
+  .seg {
+    display: inline-flex;
+    padding: 2px;
+    border: 1px solid var(--color-line);
+    background: var(--color-surface-3);
+    border-radius: 8px;
+  }
+  .seg > button {
+    border: 0;
+    background: transparent;
+    padding: 4px 11px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-fg-2);
+    border-radius: 6px;
+  }
+  .seg > button[aria-pressed="true"] {
+    background: #fff;
+    color: var(--color-accent);
+    box-shadow: 0 1px 2px #1018281a;
+  }
+  .seg > button:disabled {
+    opacity: 0.5;
+  }
+
+  .eyebrow {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1.1px;
+    color: var(--color-accent);
+    font-weight: 750;
+  }
+
+  .data-table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 12px;
+  }
+  .data-table th,
+  .data-table td {
+    text-align: left;
+    vertical-align: top;
+    padding: 10px 11px;
+    border-bottom: 1px solid var(--color-line-soft);
+    white-space: nowrap;
+  }
+  .data-table th {
+    font-size: 10px;
+    letter-spacing: 0.25px;
+    text-transform: uppercase;
+    color: var(--color-muted);
+    background: #fafbfc;
+    font-weight: 750;
+  }
+  .data-table tr:last-child td {
+    border-bottom: 0;
+  }
+  .data-table .num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@utility tabular {
+  font-variant-numeric: tabular-nums;
+}
+@utility safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+@layer components {
+  .fb-link {
+    border: 0;
+    background: none;
+    padding: 4px 6px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-accent);
+    border-radius: 5px;
+  }
+  .fb-link:hover:not(:disabled) {
+    background: var(--color-accent-soft);
+  }
+  .fb-link:disabled {
+    color: #a3adbd;
+  }
+}

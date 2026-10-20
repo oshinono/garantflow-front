@@ -1,0 +1,7 @@
+.yarn
+coverage
+dist
+prototype_v10_6.html
+public/mockServiceWorker.js
+src/api/schema.d.ts
+tech.md

@@ -1,0 +1,65 @@
+{
+  "name": "garantflow-web",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "packageManager": "yarn@4.18.1",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "lint": "eslint . --max-warnings=0",
+    "format": "prettier --write .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "api:gen": "node scripts/api-gen.mjs"
+  },
+  "dependencies": {
+    "@kobalte/core": "0.13.14",
+    "@solidjs/router": "1.0.0",
+    "@tanstack/solid-query": "5.104.4",
+    "big.js": "7.0.1",
+    "date-fns": "4.4.0",
+    "lucide-solid": "1.59.0",
+    "openapi-fetch": "0.17.0",
+    "solid-js": "1.9.17",
+    "valibot": "1.5.0",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.39.5",
+    "@playwright/test": "1.64.1",
+    "@solidjs/testing-library": "0.8.10",
+    "@tailwindcss/vite": "4.3.3",
+    "@testing-library/dom": "10.4.2",
+    "@testing-library/jest-dom": "7.0.1",
+    "@types/big.js": "7.0.0",
+    "@types/node": "22.20.5",
+    "@vitest/coverage-v8": "4.1.12",
+    "eslint": "9.39.5",
+    "eslint-plugin-solid": "0.18.1",
+    "globals": "17.13.0",
+    "jsdom": "30.1.3",
+    "lefthook": "2.2.2",
+    "msw": "2.15.0",
+    "openapi-typescript": "7.13.0",
+    "prettier": "3.9.10",
+    "prettier-plugin-tailwindcss": "0.8.1",
+    "tailwindcss": "4.3.3",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.71.2",
+    "vite": "7.3.7",
+    "vite-plugin-solid": "2.11.14",
+    "vitest": "4.1.12"
+  },
+  "msw": {
+    "workerDirectory": [
+      "public"
+    ]
+  }
+}

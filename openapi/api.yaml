@@ -1,0 +1,949 @@
+# Контракт API Garant Flow, собранный по api.md (корень репозитория).
+#
+# Источник истины — живая схема бэкенда /openapi.json. Когда она доступна:
+#   API_SCHEMA_URL=http://localhost:8000/openapi.json yarn api:gen && yarn typecheck
+# Места, которых нет в api.md и которые восстановлены по смыслу, помечены «уточнить»:
+# состав ApplicationSummaryResponse, полей BankRequestResponse / GuaranteeResponse и
+# StatusHistoryEntry. Поля с пометкой «Z-xx» — предложения по заглушкам из ТЗ (8.3).
+openapi: 3.1.0
+info:
+  title: Garant Flow API (по api.md)
+  version: 0.2.0
+servers:
+  - url: /
+paths:
+  /health:
+    get:
+      operationId: health
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/HealthResponse" }
+
+  # ------------------------------------------------------------------ auth
+  /api/v1/auth/login:
+    post:
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema: { $ref: "#/components/schemas/LoginForm" }
+      responses:
+        "200": { $ref: "#/components/responses/Tokens" }
+        "401": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+  /api/v1/auth/refresh:
+    post:
+      operationId: refresh
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RefreshRequest" }
+      responses:
+        "200": { $ref: "#/components/responses/Tokens" }
+        "401": { $ref: "#/components/responses/Error" }
+  /api/v1/auth/logout:
+    post:
+      operationId: logout
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RefreshRequest" }
+      responses:
+        "204": { description: Logged out }
+  /api/v1/auth/verify-email:
+    post:
+      operationId: verifyEmail
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/VerifyEmailRequest" }
+      responses:
+        "204": { description: Verified }
+        "400": { $ref: "#/components/responses/Error" }
+  /api/v1/auth/verify-email/resend:
+    post:
+      operationId: resendVerification
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ResendVerificationRequest" }
+      responses:
+        "202": { description: Accepted }
+
+  # ----------------------------------------------------------------- users
+  /api/v1/users:
+    post:
+      operationId: registerUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RegisterUserRequest" }
+      responses:
+        "201": { $ref: "#/components/responses/Created" }
+        "400": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+  /api/v1/users/me:
+    get:
+      operationId: getMe
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/UserResponse" }
+  /api/v1/users/{user_id}:
+    parameters:
+      - { $ref: "#/components/parameters/UserId" }
+    get:
+      operationId: getUser
+      responses:
+        "200":
+          description: User (public)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/UserResponse" }
+        "404": { $ref: "#/components/responses/Error" }
+
+  # ------------------------------------------------------------ workspaces
+  /api/v1/workspaces:
+    get:
+      operationId: listWorkspaces
+      responses:
+        "200":
+          description: Workspaces of the current user
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/WorkspaceSummaryResponse" }
+    post:
+      operationId: createWorkspace
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateWorkspaceRequest" }
+      responses:
+        "201": { $ref: "#/components/responses/Created" }
+  /api/v1/workspaces/{workspace_id}:
+    parameters:
+      - { $ref: "#/components/parameters/WorkspaceId" }
+    get:
+      operationId: getWorkspace
+      responses:
+        "200":
+          description: Workspace with members
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WorkspaceResponse" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+  /api/v1/workspaces/{workspace_id}/invitations:
+    parameters:
+      - { $ref: "#/components/parameters/WorkspaceId" }
+    get:
+      operationId: listInvitations
+      responses:
+        "200":
+          description: Invitations
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/InvitationResponse" }
+    post:
+      operationId: createInvitation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateInvitationRequest" }
+      responses:
+        "201": { $ref: "#/components/responses/Created" }
+        "409": { $ref: "#/components/responses/Error" }
+  /api/v1/workspaces/{workspace_id}/invitations/{invitation_id}:
+    parameters:
+      - { $ref: "#/components/parameters/WorkspaceId" }
+      - { $ref: "#/components/parameters/InvitationId" }
+    delete:
+      operationId: revokeInvitation
+      responses:
+        "204": { description: Revoked }
+  /api/v1/workspaces/{workspace_id}/members/{user_id}:
+    parameters:
+      - { $ref: "#/components/parameters/WorkspaceId" }
+      - { $ref: "#/components/parameters/UserId" }
+    patch:
+      operationId: changeMemberRole
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ChangeMemberRoleRequest" }
+      responses:
+        "204": { description: Updated }
+        "403": { $ref: "#/components/responses/Error" }
+    delete:
+      operationId: removeMember
+      responses:
+        "204": { description: Removed }
+        "403": { $ref: "#/components/responses/Error" }
+  /api/v1/invitations/accept:
+    post:
+      operationId: acceptInvitation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AcceptInvitationRequest" }
+      responses:
+        "200":
+          description: Accepted
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AcceptInvitationResponse" }
+        "400": { $ref: "#/components/responses/Error" }
+        "403": { $ref: "#/components/responses/Error" }
+        "404": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+
+  # --------------------------------------------------------------- clients
+  /api/v1/workspaces/{workspace_id}/clients:
+    parameters:
+      - { $ref: "#/components/parameters/WorkspaceId" }
+    post:
+      operationId: createClient
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ClientRequest" }
+      responses:
+        "201": { $ref: "#/components/responses/Created" }
+        "422": { $ref: "#/components/responses/Error" }
+  /api/v1/workspaces/{workspace_id}/clients/{client_id}:
+    parameters:
+      - { $ref: "#/components/parameters/WorkspaceId" }
+      - { $ref: "#/components/parameters/ClientId" }
+    put:
+      operationId: updateClient
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ClientRequest" }
+      responses:
+        "204": { description: Updated }
+    delete:
+      operationId: deleteClient
+      responses:
+        "204": { description: Deleted }
+        "409": { $ref: "#/components/responses/Error" }
+  /api/v1/workspaces/{workspace_id}/clients/{client_id}/archive:
+    parameters:
+      - { $ref: "#/components/parameters/WorkspaceId" }
+      - { $ref: "#/components/parameters/ClientId" }
+    post:
+      operationId: archiveClient
+      responses:
+        "204": { description: Archived }
+  /api/v1/workspaces/{workspace_id}/clients/{client_id}/restore:
+    parameters:
+      - { $ref: "#/components/parameters/WorkspaceId" }
+      - { $ref: "#/components/parameters/ClientId" }
+    post:
+      operationId: restoreClient
+      responses:
+        "204": { description: Restored }
+
+  # ----------------------------------------------------------------- banks
+  /api/v1/workspaces/{workspace_id}/banks:
+    parameters:
+      - { $ref: "#/components/parameters/WorkspaceId" }
+    get:
+      operationId: listBanks
+      parameters:
+        - name: include_inactive
+          in: query
+          schema: { type: boolean, default: false }
+      responses:
+        "200":
+          description: Banks
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/BankResponse" }
+    post:
+      operationId: createBank
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BankNameRequest" }
+      responses:
+        "201": { $ref: "#/components/responses/Created" }
+        "409": { $ref: "#/components/responses/Error" }
+  /api/v1/workspaces/{workspace_id}/banks/{bank_id}:
+    parameters:
+      - { $ref: "#/components/parameters/WorkspaceId" }
+      - { $ref: "#/components/parameters/BankId" }
+    patch:
+      operationId: renameBank
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BankNameRequest" }
+      responses:
+        "204": { description: Renamed }
+        "409": { $ref: "#/components/responses/Error" }
+  /api/v1/workspaces/{workspace_id}/banks/{bank_id}/activate:
+    parameters:
+      - { $ref: "#/components/parameters/WorkspaceId" }
+      - { $ref: "#/components/parameters/BankId" }
+    post:
+      operationId: activateBank
+      responses:
+        "204": { description: Activated }
+  /api/v1/workspaces/{workspace_id}/banks/{bank_id}/deactivate:
+    parameters:
+      - { $ref: "#/components/parameters/WorkspaceId" }
+      - { $ref: "#/components/parameters/BankId" }
+    post:
+      operationId: deactivateBank
+      responses:
+        "204": { description: Deactivated }
+
+  # ---------------------------------------------------------- procurements
+  /api/v1/workspaces/{workspace_id}/procurements:
+    parameters:
+      - { $ref: "#/components/parameters/WorkspaceId" }
+    get:
+      operationId: listProcurements
+      parameters:
+        - { name: client_id, in: query, schema: { type: string, format: uuid } }
+        - { name: client_inn, in: query, schema: { type: string } }
+        - { name: registry_number, in: query, schema: { type: string } }
+        - { name: include_archived, in: query, schema: { type: boolean, default: false } }
+      responses:
+        "200":
+          description: Procurements
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/ProcurementResponse" }
+    post:
+      operationId: createProcurement
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateProcurementRequest" }
+      responses:
+        "201": { $ref: "#/components/responses/Created" }
+        "409": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+  /api/v1/workspaces/{workspace_id}/procurements/{procurement_id}:
+    parameters:
+      - { $ref: "#/components/parameters/WorkspaceId" }
+      - { $ref: "#/components/parameters/ProcurementId" }
+    get:
+      operationId: getProcurement
+      responses:
+        "200":
+          description: Procurement
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ProcurementResponse" }
+        "404": { $ref: "#/components/responses/Error" }
+    put:
+      operationId: updateProcurement
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ProcurementFields" }
+      responses:
+        "204": { description: Updated }
+        "409": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+    delete:
+      operationId: deleteProcurement
+      responses:
+        "204": { description: Deleted }
+        "409": { $ref: "#/components/responses/Error" }
+  /api/v1/workspaces/{workspace_id}/procurements/{procurement_id}/archive:
+    parameters:
+      - { $ref: "#/components/parameters/WorkspaceId" }
+      - { $ref: "#/components/parameters/ProcurementId" }
+    post:
+      operationId: archiveProcurement
+      responses:
+        "204": { description: Archived }
+  /api/v1/workspaces/{workspace_id}/procurements/{procurement_id}/restore:
+    parameters:
+      - { $ref: "#/components/parameters/WorkspaceId" }
+      - { $ref: "#/components/parameters/ProcurementId" }
+    post:
+      operationId: restoreProcurement
+      responses:
+        "204": { description: Restored }
+
+  # ---------------------------------------------------------- applications
+  /api/v1/workspaces/{workspace_id}/applications:
+    parameters:
+      - { $ref: "#/components/parameters/WorkspaceId" }
+    get:
+      operationId: listApplications
+      parameters:
+        - { name: status, in: query, schema: { $ref: "#/components/schemas/ApplicationStatus" } }
+        - { name: client_id, in: query, schema: { type: string, format: uuid } }
+        - { name: client_inn, in: query, schema: { type: string } }
+        - { name: registry_number, in: query, schema: { type: string } }
+      responses:
+        "200":
+          description: Applications (no pagination)
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/ApplicationSummaryResponse" }
+    post:
+      operationId: createApplication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateApplicationRequest" }
+      responses:
+        "201": { $ref: "#/components/responses/Created" }
+        "409": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+  /api/v1/workspaces/{workspace_id}/applications/{application_id}:
+    parameters:
+      - { $ref: "#/components/parameters/WorkspaceId" }
+      - { $ref: "#/components/parameters/ApplicationId" }
+    get:
+      operationId: getApplication
+      responses:
+        "200":
+          description: Application
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApplicationResponse" }
+        "404": { $ref: "#/components/responses/Error" }
+    put:
+      operationId: updateApplication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ApplicationFields" }
+      responses:
+        "204": { description: Updated }
+        "409": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+  /api/v1/workspaces/{workspace_id}/applications/{application_id}/archive:
+    parameters:
+      - { $ref: "#/components/parameters/WorkspaceId" }
+      - { $ref: "#/components/parameters/ApplicationId" }
+    post:
+      operationId: archiveApplication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ArchiveApplicationRequest" }
+      responses:
+        "204": { description: Archived }
+        "409": { $ref: "#/components/responses/Error" }
+  /api/v1/workspaces/{workspace_id}/applications/{application_id}/reopen:
+    parameters:
+      - { $ref: "#/components/parameters/WorkspaceId" }
+      - { $ref: "#/components/parameters/ApplicationId" }
+    post:
+      operationId: reopenApplication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ReopenApplicationRequest" }
+      responses:
+        "204": { description: Reopened }
+        "409": { $ref: "#/components/responses/Error" }
+  /api/v1/workspaces/{workspace_id}/applications/{application_id}/bank-requests:
+    parameters:
+      - { $ref: "#/components/parameters/WorkspaceId" }
+      - { $ref: "#/components/parameters/ApplicationId" }
+    post:
+      operationId: addBankRequest
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AddBankRequestRequest" }
+      responses:
+        "201": { $ref: "#/components/responses/Created" }
+        "409": { $ref: "#/components/responses/Error" }
+  /api/v1/workspaces/{workspace_id}/applications/{application_id}/bank-requests/{bank_request_id}:
+    parameters:
+      - { $ref: "#/components/parameters/WorkspaceId" }
+      - { $ref: "#/components/parameters/ApplicationId" }
+      - { $ref: "#/components/parameters/BankRequestId" }
+    put:
+      operationId: updateBankRequest
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BankRequestFields" }
+      responses:
+        "204": { description: Updated }
+    delete:
+      operationId: deleteBankRequest
+      responses:
+        "204": { description: Deleted }
+        "409": { $ref: "#/components/responses/Error" }
+  /api/v1/workspaces/{workspace_id}/applications/{application_id}/guarantees:
+    parameters:
+      - { $ref: "#/components/parameters/WorkspaceId" }
+      - { $ref: "#/components/parameters/ApplicationId" }
+    post:
+      operationId: issueGuarantee
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/IssueGuaranteeRequest" }
+      responses:
+        "201": { $ref: "#/components/responses/Created" }
+        "409": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+  /api/v1/workspaces/{workspace_id}/applications/{application_id}/guarantees/{guarantee_id}:
+    parameters:
+      - { $ref: "#/components/parameters/WorkspaceId" }
+      - { $ref: "#/components/parameters/ApplicationId" }
+      - { $ref: "#/components/parameters/GuaranteeId" }
+    put:
+      operationId: updateGuarantee
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/GuaranteeFields" }
+      responses:
+        "204": { description: Updated }
+        "409": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+    delete:
+      operationId: deleteGuarantee
+      responses:
+        "204": { description: Deleted }
+
+components:
+  parameters:
+    WorkspaceId: { name: workspace_id, in: path, required: true, schema: { type: string, format: uuid } }
+    UserId: { name: user_id, in: path, required: true, schema: { type: string, format: uuid } }
+    InvitationId: { name: invitation_id, in: path, required: true, schema: { type: string, format: uuid } }
+    ClientId: { name: client_id, in: path, required: true, schema: { type: string, format: uuid } }
+    BankId: { name: bank_id, in: path, required: true, schema: { type: string, format: uuid } }
+    ProcurementId: { name: procurement_id, in: path, required: true, schema: { type: string, format: uuid } }
+    ApplicationId: { name: application_id, in: path, required: true, schema: { type: string, format: uuid } }
+    BankRequestId: { name: bank_request_id, in: path, required: true, schema: { type: string, format: uuid } }
+    GuaranteeId: { name: guarantee_id, in: path, required: true, schema: { type: string, format: uuid } }
+  responses:
+    Tokens:
+      description: Token pair
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/TokenResponse" }
+    Created:
+      description: Created
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/IdResponse" }
+    Error:
+      description: Error
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+  schemas:
+    Decimal:
+      type: string
+      description: Decimal, не более 2 знаков после запятой
+      pattern: "^-?\\d+(\\.\\d{1,2})?$"
+    IdResponse:
+      type: object
+      required: [id]
+      properties:
+        id: { type: string, format: uuid }
+    ErrorResponse:
+      type: object
+      required: [detail]
+      properties:
+        code: { type: string }
+        detail:
+          oneOf:
+            - type: string
+            - type: array
+              items: { $ref: "#/components/schemas/ValidationErrorItem" }
+    ValidationErrorItem:
+      type: object
+      required: [loc, msg, type]
+      properties:
+        loc:
+          type: array
+          items:
+            oneOf: [{ type: string }, { type: integer }]
+        msg: { type: string }
+        type: { type: string }
+    HealthResponse:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string }
+
+    MemberRole: { type: string, enum: [OWNER, ADMIN, MEMBER] }
+    ClientType: { type: string, enum: [company, ip] }
+    ProcurementLawType: { type: string, enum: [commercial, 44_fz, 223_fz, 615_pp] }
+    GuaranteeType: { type: string, enum: [participation, oik, go, advance, vat] }
+    ApplicationStatus: { type: string, enum: [in_progress, issued, archived] }
+
+    LoginForm:
+      type: object
+      required: [username, password]
+      properties:
+        username: { type: string, description: Email }
+        password: { type: string }
+    TokenResponse:
+      type: object
+      required: [access_token, refresh_token, token_type, expires_in]
+      properties:
+        access_token: { type: string }
+        refresh_token: { type: string }
+        token_type: { type: string }
+        expires_in: { type: integer }
+    RefreshRequest:
+      type: object
+      required: [refresh_token]
+      properties:
+        refresh_token: { type: string, minLength: 1 }
+    VerifyEmailRequest:
+      type: object
+      required: [token]
+      properties:
+        token: { type: string, minLength: 1 }
+    ResendVerificationRequest:
+      type: object
+      required: [email]
+      properties:
+        email: { type: string, minLength: 3, maxLength: 320 }
+
+    RegisterUserRequest:
+      type: object
+      required: [email, full_name, password]
+      properties:
+        email: { type: string, minLength: 3, maxLength: 320 }
+        full_name: { type: string, minLength: 1, maxLength: 255 }
+        password: { type: string, minLength: 8, maxLength: 128 }
+        invitation_token: { type: [string, "null"], minLength: 1 }
+    UserResponse:
+      type: object
+      required: [id, email, full_name, is_active, email_verified]
+      properties:
+        id: { type: string, format: uuid }
+        email: { type: string }
+        full_name: { type: string }
+        is_active: { type: boolean }
+        email_verified: { type: boolean }
+
+    CreateWorkspaceRequest:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 255 }
+    WorkspaceSummaryResponse:
+      type: object
+      required: [id, name, role]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        role: { $ref: "#/components/schemas/MemberRole" }
+    WorkspaceMember:
+      type: object
+      required: [user_id, role]
+      properties:
+        user_id: { type: string, format: uuid }
+        role: { $ref: "#/components/schemas/MemberRole" }
+    WorkspaceResponse:
+      type: object
+      required: [id, name, owner_id, members]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        owner_id: { type: string, format: uuid }
+        members:
+          type: array
+          items: { $ref: "#/components/schemas/WorkspaceMember" }
+    CreateInvitationRequest:
+      type: object
+      required: [email]
+      properties:
+        email: { type: string, minLength: 3, maxLength: 320 }
+        role: { $ref: "#/components/schemas/MemberRole" }
+    InvitationResponse:
+      type: object
+      required: [id, email, role, invited_by, created_at, expires_at, is_expired]
+      properties:
+        id: { type: string, format: uuid }
+        email: { type: string }
+        role: { $ref: "#/components/schemas/MemberRole" }
+        invited_by: { type: string, format: uuid }
+        created_at: { type: string, format: date-time }
+        expires_at: { type: string, format: date-time }
+        is_expired: { type: boolean }
+    ChangeMemberRoleRequest:
+      type: object
+      required: [role]
+      properties:
+        role: { $ref: "#/components/schemas/MemberRole" }
+    AcceptInvitationRequest:
+      type: object
+      required: [token]
+      properties:
+        token: { type: string, minLength: 1 }
+    AcceptInvitationResponse:
+      type: object
+      required: [workspace_id]
+      properties:
+        workspace_id: { type: string, format: uuid }
+
+    ClientRequest:
+      type: object
+      required: [name]
+      properties:
+        client_type: { $ref: "#/components/schemas/ClientType" }
+        name: { type: string, minLength: 1, maxLength: 500 }
+        short_name: { type: [string, "null"], maxLength: 255 }
+        inn: { type: [string, "null"], maxLength: 12 }
+        kpp: { type: [string, "null"], maxLength: 9 }
+        ogrn: { type: [string, "null"], maxLength: 15 }
+        email: { type: [string, "null"], maxLength: 320 }
+        phone: { type: [string, "null"], maxLength: 64 }
+        address: { type: [string, "null"], maxLength: 1000 }
+        notes: { type: [string, "null"], maxLength: 5000 }
+
+    BankNameRequest:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 255 }
+    BankResponse:
+      type: object
+      required: [id, name, is_global, is_active, created_at, updated_at]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        is_global: { type: boolean }
+        is_active: { type: boolean }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    ProcurementFields:
+      type: object
+      required: [law_type, name]
+      properties:
+        law_type: { $ref: "#/components/schemas/ProcurementLawType" }
+        name: { type: string, minLength: 1, maxLength: 1000 }
+        registry_number: { type: [string, "null"], maxLength: 100 }
+        placement_url: { type: [string, "null"], maxLength: 2000 }
+        customer_name: { type: [string, "null"], maxLength: 500 }
+        customer_inn: { type: [string, "null"], maxLength: 12 }
+        nmc: { oneOf: [{ $ref: "#/components/schemas/Decimal" }, { type: "null" }] }
+        contract_price: { oneOf: [{ $ref: "#/components/schemas/Decimal" }, { type: "null" }] }
+        contract_number: { type: [string, "null"], maxLength: 100 }
+        contract_date: { type: [string, "null"], format: date }
+        platform: { type: [string, "null"], maxLength: 255 }
+        application_deadline: { type: [string, "null"], format: date-time }
+        contract_deadline: { type: [string, "null"], format: date-time }
+    CreateProcurementRequest:
+      allOf:
+        - $ref: "#/components/schemas/ProcurementFields"
+        - type: object
+          required: [client_id]
+          properties:
+            client_id: { type: string, format: uuid }
+    ProcurementResponse:
+      allOf:
+        - $ref: "#/components/schemas/ProcurementFields"
+        - type: object
+          required: [id, workspace_id, client_id, created_at, updated_at]
+          properties:
+            id: { type: string, format: uuid }
+            workspace_id: { type: string, format: uuid }
+            client_id: { type: string, format: uuid }
+            created_at: { type: string, format: date-time }
+            updated_at: { type: string, format: date-time }
+            archived_at: { type: [string, "null"], format: date-time }
+
+    ApplicationFields:
+      type: object
+      required: [guarantee_type]
+      properties:
+        guarantee_type: { $ref: "#/components/schemas/GuaranteeType" }
+        procurement_id: { type: [string, "null"], format: uuid }
+        number: { type: [string, "null"], maxLength: 100 }
+        requested_amount: { oneOf: [{ $ref: "#/components/schemas/Decimal" }, { type: "null" }] }
+        requested_valid_from: { type: [string, "null"], format: date }
+        requested_valid_to: { type: [string, "null"], format: date }
+        description: { type: [string, "null"] }
+        responsible_user_id: { type: [string, "null"], format: uuid }
+        beneficiary_name: { type: [string, "null"], maxLength: 500 }
+        beneficiary_inn: { type: [string, "null"], maxLength: 12 }
+    CreateApplicationRequest:
+      allOf:
+        - $ref: "#/components/schemas/ApplicationFields"
+        - type: object
+          required: [client_id]
+          properties:
+            client_id: { type: string, format: uuid }
+    BankRequestState:
+      type: string
+      description: "Z-02 (предложение): сводный статус запроса в банк для карточки доски"
+      enum: [draft, pending, approved, rejected, issued]
+    BankStatusSummary:
+      type: object
+      required: [bank_id, state]
+      properties:
+        bank_id: { type: string, format: uuid }
+        state: { $ref: "#/components/schemas/BankRequestState" }
+    ApplicationSummaryResponse:
+      description: "Уточнить по /openapi.json: в api.md состав summary не перечислен."
+      allOf:
+        - $ref: "#/components/schemas/ApplicationFields"
+        - type: object
+          required: [id, workspace_id, client_id, status, created_at, updated_at]
+          properties:
+            id: { type: string, format: uuid }
+            workspace_id: { type: string, format: uuid }
+            client_id: { type: string, format: uuid }
+            status: { $ref: "#/components/schemas/ApplicationStatus" }
+            created_at: { type: string, format: date-time }
+            updated_at: { type: string, format: date-time }
+            bank_statuses:
+              description: "Z-02 (предложение), в текущем API отсутствует"
+              type: array
+              items: { $ref: "#/components/schemas/BankStatusSummary" }
+    StatusHistoryEntry:
+      description: "Уточнить по /openapi.json"
+      type: object
+      required: [to_status, changed_at]
+      properties:
+        from_status: { oneOf: [{ $ref: "#/components/schemas/ApplicationStatus" }, { type: "null" }] }
+        to_status: { $ref: "#/components/schemas/ApplicationStatus" }
+        changed_at: { type: string, format: date-time }
+        changed_by_user_id: { type: [string, "null"], format: uuid }
+        comment: { type: [string, "null"] }
+    ApplicationResponse:
+      allOf:
+        - $ref: "#/components/schemas/ApplicationSummaryResponse"
+        - type: object
+          required: [bank_requests, guarantees, status_history]
+          properties:
+            created_by_user_id: { type: [string, "null"], format: uuid }
+            archive_reason: { type: [string, "null"] }
+            client_obtained_independently: { type: [boolean, "null"] }
+            bank_requests:
+              type: array
+              items: { $ref: "#/components/schemas/BankRequestResponse" }
+            guarantees:
+              type: array
+              items: { $ref: "#/components/schemas/GuaranteeResponse" }
+            status_history:
+              type: array
+              items: { $ref: "#/components/schemas/StatusHistoryEntry" }
+    ArchiveApplicationRequest:
+      type: object
+      properties:
+        reason: { type: [string, "null"] }
+        client_obtained_independently: { type: [boolean, "null"] }
+    ReopenApplicationRequest:
+      type: object
+      properties:
+        comment: { type: [string, "null"] }
+
+    BankRequestFields:
+      type: object
+      properties:
+        status_text: { type: [string, "null"] }
+        external_number: { type: [string, "null"], maxLength: 255 }
+        requested_amount: { oneOf: [{ $ref: "#/components/schemas/Decimal" }, { type: "null" }] }
+        sent_at: { type: [string, "null"], format: date-time }
+        decision_at: { type: [string, "null"], format: date-time }
+        rejection_reason: { type: [string, "null"] }
+        notes: { type: [string, "null"] }
+        offer_received: { type: [boolean, "null"] }
+    AddBankRequestRequest:
+      allOf:
+        - $ref: "#/components/schemas/BankRequestFields"
+        - type: object
+          required: [bank_id]
+          properties:
+            bank_id: { type: string, format: uuid }
+    BankRequestResponse:
+      description: "Уточнить по /openapi.json"
+      allOf:
+        - $ref: "#/components/schemas/AddBankRequestRequest"
+        - type: object
+          required: [id, application_id, created_at, updated_at]
+          properties:
+            id: { type: string, format: uuid }
+            application_id: { type: string, format: uuid }
+            created_at: { type: string, format: date-time }
+            updated_at: { type: string, format: date-time }
+
+    GuaranteeFields:
+      type: object
+      required: [amount, issued_at, agent_commission_is_manual]
+      properties:
+        amount: { $ref: "#/components/schemas/Decimal" }
+        issued_at: { type: string, format: date }
+        guarantee_number: { type: [string, "null"], maxLength: 255 }
+        valid_from: { type: [string, "null"], format: date }
+        valid_to: { type: [string, "null"], format: date }
+        bank_commission_amount: { oneOf: [{ $ref: "#/components/schemas/Decimal" }, { type: "null" }] }
+        agent_commission_rate: { oneOf: [{ $ref: "#/components/schemas/Decimal" }, { type: "null" }] }
+        agent_commission_amount: { oneOf: [{ $ref: "#/components/schemas/Decimal" }, { type: "null" }] }
+        notes: { type: [string, "null"] }
+        agent_commission_is_manual: { type: boolean }
+    IssueGuaranteeRequest:
+      allOf:
+        - $ref: "#/components/schemas/GuaranteeFields"
+        - type: object
+          required: [bank_request_id]
+          properties:
+            bank_request_id: { type: string, format: uuid }
+    GuaranteeResponse:
+      description: "Уточнить по /openapi.json"
+      allOf:
+        - $ref: "#/components/schemas/IssueGuaranteeRequest"
+        - type: object
+          required: [id, application_id]
+          properties:
+            id: { type: string, format: uuid }
+            application_id: { type: string, format: uuid }
+            created_at: { type: string, format: date-time }
